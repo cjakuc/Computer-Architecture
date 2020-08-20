@@ -9,7 +9,7 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        self.ram = [None] * 256
+        self.ram = [0] * 256
         self.reg = [0] * 8
         self.pc = 0
         self.sp = 7
@@ -18,12 +18,13 @@ class CPU:
         self.PRN = 0b01000111
         self.HLT = 0b00000001
         self.MUL = 0b10100010
+        self.ADD = 0b10100000
         self.PUSH = 0b01000101
         self.POP = 0b01000110
-        self.CALL = 0b01001001
-        self.RET = 0b00001010
-        self.SHL = 0b10101100
-        self.SHR = 0b10101101
+        self.CALL = 0b01010000
+        self.RET = 0b00010001
+        # self.SHL = 0b10101100
+        # self.SHR = 0b10101101
 
     def ram_read(self, address):
         return self.ram[address]
@@ -97,7 +98,7 @@ class CPU:
     def run(self):
         """Run the CPU."""
         running = True
-        # stack_pointer = 244 #F4
+        self.reg[self.sp] = 0xf4
 
         while running:
             cmd = self.ram[self.pc]
@@ -107,24 +108,30 @@ class CPU:
             # HLT
             if cmd == self.HLT:
                 running = False
+                self.op_size = (cmd >> 6) + 1
             
             # LDI
-            elif cmd == 0b10000010:
+            elif cmd == self.LDI:
                 self.reg[operand_a] = operand_b
                 # self.pc += 3
-                self.op_size = cmd >> 6
+                self.op_size = (cmd >> 6) + 1
 
             # PRN
             elif cmd == self.PRN:
                 # self.pc += 2
                 print(self.reg[operand_a])
-                self.op_size = cmd >> 6
+                self.op_size = (cmd >> 6) + 1
+
+            # ADD
+            elif cmd == self.ADD:
+                self.alu("ADD", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
 
             # MUL
             elif cmd == self.MUL:
                 # self.pc += 3
                 self.alu("MUL", operand_a, operand_b)
-                self.op_size = cmd >> 6
+                self.op_size = (cmd >> 6) + 1
 
             # PUSH
             elif cmd == self.PUSH:
@@ -133,36 +140,39 @@ class CPU:
                 self.ram[self.reg[self.sp]] = val
                 # self.pc += 2
 
-                self.op_size = cmd >> 6
+                self.op_size = (cmd >> 6) + 1
+
 
             # POP
             elif cmd == self.POP:
                 val = self.ram[self.reg[self.sp]]
                 self.reg[operand_a] = val
-                self.op_size = cmd >> 6
+                self.reg[self.sp] += 1
+                self.op_size = (cmd >> 6) + 1
 
             # CALL
             elif cmd == self.CALL:
                 self.reg[self.sp] -= 1
-                self.ram[self.reg[self.sp]] = self.pc + 2
+                self.ram[self.reg[self.sp]] = (self.pc + 2)
 
-                reg = self.ram[self.reg[self.pc + 1]]
-                self.pc = self.reg[reg]
+                reg_index = self.ram[self.pc + 1]
+                self.pc = self.reg[reg_index]
 
-                op_size = 0
+                self.op_size = 0
 
             # RET
             elif cmd == self.RET:
                 self.pc = self.ram[self.reg[self.sp]]
                 self.reg[self.sp] += 1
 
-                op_size = 0
+                self.op_size = 0
 
             # SHL
-            elif cmd == self.SHL:
-                self.reg[operand_a] <<= self.reg[operand_b]
+            # elif cmd == self.SHL:
+            #     self.reg[operand_a] <<= self.reg[operand_b]
 
-            elif cmd == self. SHR:
-                self.reg[operand_a] >>= self.reg[operand_b]
+            # SHR
+            # elif cmd == self. SHR:
+            #     self.reg[operand_a] >>= self.reg[operand_b]
             
-            self.pc += self.op_size + 1
+            self.pc += self.op_size
