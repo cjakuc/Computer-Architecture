@@ -25,6 +25,27 @@ class CPU:
         self.RET = 0b00010001
         # self.SHL = 0b10101100
         # self.SHR = 0b10101101
+        self.CMP = 0b10100111
+        self.lflag = 0
+        self.gflag = 0
+        self.eflag = 0
+        self.JMP = 0b01010100
+        self.JEQ = 0b01010101
+        self.JNE = 0b01010110
+        self.JGE = 0b01011010
+        self.JGT = 0b01010111
+        self.JLE = 0b01011001
+        self.JLT = 0b01011000
+        self.AND = 0b10101000
+        self.OR = 0b10101010
+        self.XOR = 0b10101011
+        self.NOT = 0b01101001
+        self.SHL = 0b10101100
+        self.SHR = 0b10101101
+        self.MOD = 0b10100100
+
+
+ 
 
     def ram_read(self, address):
         return self.ram[address]
@@ -72,6 +93,20 @@ class CPU:
             self.reg[reg_a] -= self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "AND":
+            self.reg[reg_a] &= self.reg[reg_b]
+        elif op == "OR":
+            self.reg[reg_a] |= self.reg[reg_b]
+        elif op == "XOR":
+            self.reg[reg_a] ^= self.reg[reg_b]
+        elif op == "NOT":
+            self.reg[reg_a] ^= 0b11111111 
+        elif op == "SHL":
+            self.reg[reg_a] <<= self.reg[reg_b]
+        elif op == "SHR":
+            self.reg[reg_a] >>= self.reg[reg_b]
+        elif op == "MOD":
+            self.reg[reg_a] %= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -108,7 +143,7 @@ class CPU:
             # HLT
             if cmd == self.HLT:
                 running = False
-                self.op_size = (cmd >> 6) + 1
+                # self.op_size = (cmd >> 6) + 1
             
             # LDI
             elif cmd == self.LDI:
@@ -142,7 +177,6 @@ class CPU:
 
                 self.op_size = (cmd >> 6) + 1
 
-
             # POP
             elif cmd == self.POP:
                 val = self.ram[self.reg[self.sp]]
@@ -167,12 +201,109 @@ class CPU:
 
                 self.op_size = 0
 
+            # CMP
+            elif cmd == self.CMP:
+                if self.reg[operand_a] < self.reg[operand_b]:
+                    self.lflag = 1
+                    self.gflag = 0
+                    self.eflag = 0
+                elif self.reg[operand_a] > self.reg[operand_b]:
+                    self.gflag = 1
+                    self.lflag = 0
+                    self.eflag = 0
+                elif self.reg[operand_a] == self.reg[operand_b]:
+                    self.eflag = 1
+                    self.gflag = 0
+                    self.lflag = 0
+                self.op_size = (cmd >> 6) + 1
+ 
+            # JMP
+            elif cmd == self.JMP:
+                self.pc = self.reg[operand_a]
+                self.op_size = 0
+            
+            # JEQ
+            elif cmd == self.JEQ:
+                if self.eflag == 1:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+
+            # JNE
+            elif cmd == self.JNE:
+                if self.eflag == 0:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+
+            # JGE
+            elif cmd == self.JGE:
+                if self.eflag == 1 or self.gflag == 1:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+
+            # JGT
+            elif cmd == self.JGT:
+                if self.gflag == 1:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+
+            # JLE
+            elif cmd == self.JLE:
+                if self.eflag == 1 or self.lflag == 1:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+
+            # JLT
+            elif cmd == self.JLT:
+                if self.lflag == 0:
+                    self.pc = self.reg[operand_a]
+                    self.op_size = 0
+                else:
+                    self.op_size = (cmd >> 6) + 1
+            
+            # AND
+            elif cmd == self.AND:
+                self.alu("AND", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
+
+            # OR
+            elif cmd == self.OR:
+                self.alu("OR", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
+
+            # XOR
+            elif cmd == self.XOR:
+                self.alu("XOR", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
+
+            # NOT
+            elif cmd == self.NOT:
+                self.alu("NOT", operand_a)
+                self.op_size = (cmd >> 6) + 1
+
             # SHL
-            # elif cmd == self.SHL:
-            #     self.reg[operand_a] <<= self.reg[operand_b]
+            elif cmd == self.SHL:
+                self.alu("SHL", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
 
             # SHR
-            # elif cmd == self. SHR:
-            #     self.reg[operand_a] >>= self.reg[operand_b]
+            elif cmd == self.SHR:
+                self.alu("SHR", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
+
+            # MOD
+            elif cmd == self.MOD:
+                self.alu("MOD", operand_a, operand_b)
+                self.op_size = (cmd >> 6) + 1
+
             
             self.pc += self.op_size
